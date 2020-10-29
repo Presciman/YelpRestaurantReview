@@ -1,0 +1,281 @@
+Factorial LDA Code
+------------------------------------
+
+Copyright (c) 2013 Michael Paul 
+Johns Hopkins University
+mpaul@cs.jhu.edu
+
+
+Please cite the following paper in any work that uses this material:
+
+@InProceedings{paul-dredze-flda-nips-2012,
+  author    = {Paul, Michael J. and Dredze, Mark},
+  title     = {Factorial LDA: Sparse Multi-Dimensional Text Models},
+  booktitle = {Advances in Neural Information Processing Systems (NIPS 2012)},
+  month     = {December},
+  year      = {2012},
+  url       = {http://books.nips.cc/papers/files/nips25/NIPS2012_1224.pdf}
+}
+
+The Factorial LDA Code is a free software; you can 
+redistribute it and/or modify it under the terms of the GNU General Public 
+License as published by the Free Software Foundation; either version 2 of the 
+License, or (at your option) any later version.
+
+The Markov Modeling Package is distributed in the hope that it will 
+be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of 
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+License for more details.
+
+You should have received a copy of the GNU General Public License along 
+with this software; if not, write to the Free Software Foundation, Inc., 
+59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+
+================================================================================
+
+1. Introduction
+---------------
+
+This software includes an implementation of Factorial LDA, described in the paper above. 
+Please refer to the paper for an overview of the model. The command line 
+parameters for this software will follow the notation from the paper.
+
+
+2. Revision History
+-------------------
+
+v0.1:  August 18, 2013 - Initial release.
+
+
+3. Installation
+---------------
+
+Straightforward Java compilation can be done with the following commands:
+
+> tar -xzvf flda-0.1.tar.gz
+> cd flda
+> javac *.java
+
+
+4. Usage
+--------
+
+To run the program, enter the command:
+
+> java LearnTopicModel -model flda -input <input_file> -K <int> -Z <int> -Y <int> [-iters <int>] [<model-specific parameters>]
+
+<input_file> is the filename of the input (format described in a later section).
+
+The required parameter -K specifies the number of factors.
+The required parameter -Z specifies the number of components of the first factor.
+The required parameter -Y specifies the number of components of all other factors.
+
+This implementation currently assumes all factors after the first have the same number
+of components. If you need to specific different numbers, you'll need to modify 
+LearnTopicModel.java
+
+The optional parameter -iters specifies the total number of Gibbs sampling 
+iterations to perform. If unspecified, this defaults to 2000.
+
+The optional parameter -samples specifies the number of samples to collect
+and store in the output file. If unspecified, this defaults to 100. The
+samples are collected at the end of the Gibbs sampling run. For example, if
+you set -iters to 5000 and -samples to 200, the sampler will run for a "burn in"
+of 4800 iterations, and it will save the samples from the final 200.
+
+The -model parameter MUST be "flda". While currently this code only
+contains the fLDA model, I am eventually planning to integrate it with code
+for my other models. 
+
+Additional command-line parameters are described in 4.1 below.
+
+When the program finishes, it writes the final variable assignments to the file
+<input_file>.assign -- the output format is similar to the input format, except 
+each word token has been appending with a :-separated list of the number of 
+times each tuple value was sampled. 
+
+The parameters theta, phi, etc. can be computed from this output
+file. For convenience, a python script is included to print out the top
+words (omega and phi) for the tuples. The script is used as:
+
+> python topwords_flda.py 3 20 2 data/input.txt 100 > output_topwords.txt
+
+The first parameter is -K, the second is -Z, the third is -Y, the fourth
+is the filename of the sampler input file (NOT the output file to which
+".assign" has been appended), and the fifth is the number of samples
+that were collected (specified by the -samples parameter, default 100).
+
+
+4.1. Parameters 
+---------------
+
+The optional command-line parameters for this model are:
+
+[-sigmaA <double>]        The stddev for the alpha parameters. Default 1.0. 
+[-sigmaAB <double>]       The stddev for the alpha^(B) parameter. Default 1.0. 
+[-sigmaW <double>]        The stddev for the omega parameters. Default 0.5. 
+[-sigmaWB <double>]       The stddev for the omega^(B) parameter. Default 10.0.
+[-delta0 <double>]        The first parameter for the Beta sparsity prior. Default 0.1. 
+[-delta1 <double>]        The second parameter for the Beta sparsity prior. Default 0.1. 
+[-alphaB <double>]        The initial value of alpha^(B). Default -5.0. 
+[-omegaB <double>]        The initial value of omega^(B). Default -5.0. 
+[-stepSizeADZ <double>]   The gradient step size for the document-specific alpha^(d) parameters.
+                          Default 1e-2. 
+[-stepSizeAZ <double>]    The gradient step size for the corpus-wide alpha^(D) parameters. 
+                          Default [stepSizeADZ]/100.0. 
+[-stepSizeAB <double>]    The gradient step size for the alpha^(B) parameter. 
+                          Default [stepSizeADZ]/100.0. 
+[-stepSizeW <double>]     The gradient step size for the omega parameters. 
+                          Default 1e-3. 
+[-stepSizeWB <double>]    The gradient step size for the omega^(B) parameter. 
+                          Default [stepSizeADZ]/100.0. 
+[-stepSizeB <double>]     The gradient step size for the sparsity parameters. 
+                          Default 1e-3. 
+[-likelihoodFreq <int>]   The interval at which the corpus log-likelihood is computed and display.
+                          It can take the following values:
+                            -1: Never compute the log-likelihood (fastest)
+                             0: Compute the log-likelihood after every sampling iteration (same as 1)
+                             x: Compute the log-likelihood every x iterations; x > 0
+                          Default 100.
+[-blockFreq <int>]        EXPERIMENTAL. The interval at which a token is sampled a block (all tuples)
+                          as opposed to sampling each factor's value independently. This is
+                          explainined in 4.2. It can take the following values:
+                            -1: Never sample as block (fastest, but worse mixing)
+                             0: Always sample as block (same as 1)
+                             x: Sample as block every x iterations; x > 0
+                          Default 0 (always use block sampling).
+[-priorPrefix <string>]   The prefix for filenames containing Gaussian prior means for omega.
+                          This is explained in 4.3. If empty, all priors are assumed to be 0-mean.
+                          Default "".
+
+Example usage:
+
+> java LearnTopicModel -model flda -input data/input.txt -K 3 -Z 20 -Y 2 -iters 5000 -sigmaW 0.1
+
+4.2 The blockFreq parameter
+---------------------------
+
+A source of slowdown in f-LDA is that the sampler considers all possible tuple values
+for each token. The number of possible tuples increases exponentially with the number
+of factors and components. For example, if Z=<20,2,2> then there are 20*2*2=80 values
+that the sampler enumerates.
+
+Rather than sampling over all possible tuples, this implementation also supports the
+ability to sample each factor independently, conditioned on the values of the other
+factors. If this is done, then if Z=<20,2,2> then the sampler only needs to consider
+20+2+2=24 possibilities, because we only consider the values within each factor,
+with the other factors fixed to their previous values.
+
+This is much faster because it the cost is additive rather than multiplicative.
+However, the sampler may not mix as well because these are not considered jointly.
+(We'll call the full sampler a "block" sampler.) The implementation can alternate
+between the two approaches, performing the more expensive block sampler every
+-blockFreq iterations. This will provide a large speedup, but I have not experimented
+with this method, so you will need to experiment with this speed/accuracy tradeoff
+if you are interested. 
+
+4.3 The priorPrefix parameter
+---------------------------
+
+By default, the Gaussian priors over the omega variables have means of 0. You can 
+specify files defining other mean values using the -priorPrefix parameter.
+
+If you use this feature, you must create a set of files specifying values for the
+priors for every tuple as well as the background weights, omega^0. The -priorPrefix
+parameter specifies the beginning of the file paths for these files. As an example,
+if you set -priorPrefix to "priors/weights" and you use Z=<3,2> (-K 2 -Z 3 -Y 2)
+then the following files must exist:
+
+priors/weights.txt
+priors/weights0_0.txt
+priors/weights0_1.txt
+priors/weights0_2.txt
+priors/weights1_0.txt
+priors/weights1_1.txt
+
+The priors/weights.txt file would contain values for the background distribution,
+while each priors/weights{k}_{i}.txt would contain values for component i of
+factor k.
+
+The format of each file is one word per line, where each line is: <word> <mean value>
+
+For example:
+
+red 1.0
+blue 2.5
+green -0.5
+
+Words that are not contained in the file will take the default value of 0.
+A file can be completely empty if you do not want to specify prior values for
+a particular tuple, although the file must still exist.
+
+If you use this functionality, please also cite this paper:
+
+@InProceedings{paul-dredze-drugs-naacl-2013,
+  author    = {Paul, Michael J. and Dredze, Mark},
+  title     = {Drug Extraction from the Web: Summarizing Drug Experiences with Multi-Dimensional Topic Models},
+  booktitle = {North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT 2013)},
+  month     = {June},
+  year      = {2013},
+  url       = {http://www.aclweb.org/anthology/N/N13/N13-1017.pdf}
+}
+
+
+
+5. Input Format
+---------------
+
+The format of the input file is:
+
+<doc_id> <doc_words (space-delimited)>
+
+Example: 
+
+0 this is a document 
+1 this is another document 
+
+The first column is an integer ID that is not used by the program, so you can
+set this to whatever you want. The IDs do not have to be unique, but they must
+be integer. These IDs will be saved in the output file, so you can use these to
+identify the documents later.
+
+
+6. Output Format
+----------------
+
+The output format is the same as the input format, except each word token
+is appended with a colon-separated list of sample counts for each tuple.
+For example, if you modeled 6 tuples and collected 100 samples, "word" in
+the input file may be written as "word:0:50:0:0:30:20" in the output file.
+This means that this token was assigned to tuple #2 50 times out of the 
+100 samples, while 5 and 6 were sampled 30 and 20 times.
+
+The output is written to a file of the same name as the input file, except
+the filename is appended with ".assign".
+
+The learned parameters and hyperparameters are also written to files with extensions
+".alpha", ".omega", ".beta", etc. 
+
+
+7. Viewing the Top Words
+------------------------
+
+Python scripts are included to print out the top words for the topics. The script 
+takes a command line argument of the input file which was used by the Java program. 
+
+Example usage:
+
+> python topwords_flda.py 3 20 2 data/input.txt 100 > output_topwords.txt
+
+The first parameter is -K, the second is -Z, the third is -Y, the fourth
+is the filename of the sampler input file (NOT the output file to which
+".assign" has been appended), and the fifth is the number of samples
+that were collected (specified by the -samples parameter, default 100).
+
+This shows the highest-weight words for each omega vector as well as the
+most sampled words for each tuple. The omega weights for the background and each
+factor > 0 are shown first. Then, each "topic" (factor 0) is shown; for each
+topic the omega weights are shown first, then the sampler counts are shown
+for each tuple that includes this topic.
+
+
